@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>HW1 Grid MDP</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <h2>Grid MDP (n = <span id="nval">{{ n }}</span>)</h2>
+    <div class="controls">
+      <label>Size n (5-9): <input id="ninput" type="number" min="5" max="9" value="{{ n }}" /></label>
+      <button id="resize">Resize</button>
+      <button id="modeStart">Set Start</button>
+      <button id="modeGoal">Set Goal</button>
+      <button id="modeBlock">Toggle Block</button>
+      <button id="compute">Run Value Iteration</button>
+    </div>
+
+    <div id="gridwrap"></div>
+
+    <script>
+      const defaultStart = {{ start }};
+      const defaultGoal = {{ goal }};
+      const defaultBlocks = {{ blocks }};
+    </script>
+    <script src="/static/main.js"></script>
+  </body>
+</html>

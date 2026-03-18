@@ -1,0 +1,10 @@
+body { font-family: Arial, sans-serif; padding: 12px; }
+.controls { margin-bottom: 10px; }
+.grid { border-collapse: collapse; }
+.grid td { width: 64px; height: 64px; border: 1px solid #999; position: relative; text-align:center; vertical-align: middle; }
+.grid .val { font-size: 11px; color: #222; }
+.grid .arrow { font-size: 20px; position: absolute; left: 4px; top: 4px; }
+.start { background: #b7f0b7; }
+.goal { background: #f0b7b7; }
+.block { background: #d0d0d0; }
+.path { outline: 3px solid gold; }
