@@ -2,66 +2,96 @@ import streamlit as st
 from app import value_iteration
 
 st.set_page_config(page_title="Grid MDP - Streamlit", layout='centered')
+st.title("Grid MDP — Clickable Grid")
 
-st.title("Grid MDP — Value Iteration")
+def init_state(n):
+    if 'n' not in st.session_state or st.session_state.n != n:
+        st.session_state.n = n
+        st.session_state.start = [0, 0]
+        st.session_state.goal = [n-1, n-1]
+        st.session_state.blocks = [[1,1],[2,2],[3,3]] if n==5 else []
+        st.session_state.V = None
+        st.session_state.policy = None
+        st.session_state.path = None
+        st.session_state.mode = 'block'
 
-n = st.sidebar.slider('Grid size n', 5, 9, 5)
+def cell_label(r, c):
+    if [r,c] == st.session_state.start:
+        return 'S'
+    if [r,c] == st.session_state.goal:
+        return 'G'
+    if [r,c] in st.session_state.blocks:
+        return 'X'
+    # if policy exists, show arrow
+    if st.session_state.policy:
+        a = st.session_state.policy[r][c]
+        return {'U':'↑','D':'↓','L':'←','R':'→','T':'★'}.get(a, '')
+    return ''
 
-# prepare cell labels
-cells = [f"{r},{c}" for r in range(n) for c in range(n)]
+def on_cell_click(r, c):
+    mode = st.session_state.mode
+    if mode == 'start':
+        # prevent placing start on a block
+        if [r,c] in st.session_state.blocks:
+            st.warning('Cannot set start on a block')
+            return
+        st.session_state.start = [r,c]
+    elif mode == 'goal':
+        if [r,c] in st.session_state.blocks:
+            st.warning('Cannot set goal on a block')
+            return
+        st.session_state.goal = [r,c]
+    else:  # block
+        if [r,c] == st.session_state.start or [r,c] == st.session_state.goal:
+            st.warning('Cannot block start/goal')
+            return
+        if [r,c] in st.session_state.blocks:
+            st.session_state.blocks.remove([r,c])
+        else:
+            if len(st.session_state.blocks) < st.session_state.n - 2:
+                st.session_state.blocks.append([r,c])
+            else:
+                st.warning(f'Max {st.session_state.n-2} blocks allowed')
 
-start_label = st.sidebar.selectbox('Start cell', cells, index=0)
-goal_label = st.sidebar.selectbox('Goal cell', cells, index=len(cells)-1)
+def run_value_iteration():
+    V, policy, path = value_iteration(st.session_state.n, st.session_state.start, st.session_state.goal, st.session_state.blocks)
+    st.session_state.V = V
+    st.session_state.policy = policy
+    st.session_state.path = path
 
-# default blocks: diagonal for n==5
-default_blocks = []
-if n == 5:
-    default_blocks = ['1,1', '2,2', '3,3']
 
-blocks_sel = st.sidebar.multiselect('Blocks (max n-2)', cells, default=default_blocks)
-if len(blocks_sel) > n-2:
-    st.sidebar.error(f'Max {n-2} blocks allowed')
+n = st.sidebar.slider('Grid size n', 5, 9, st.session_state.get('n',5))
+init_state(n)
 
+st.sidebar.markdown('---')
+st.sidebar.radio('Mode', ['block','start','goal'], key='mode', index=['block','start','goal'].index(st.session_state.mode))
 if st.sidebar.button('Run Value Iteration'):
-    start = [int(x) for x in start_label.split(',')]
-    goal = [int(x) for x in goal_label.split(',')]
-    blocks = [[int(x) for x in b.split(',')] for b in blocks_sel]
+    run_value_iteration()
 
-    V, policy, path = value_iteration(n, start, goal, blocks)
+st.sidebar.markdown('Blocks:')
+st.sidebar.write(st.session_state.blocks)
 
-    arrows = {'U':'↑','D':'↓','L':'←','R':'→','T':'★','':''}
+st.subheader('Click a cell to set start/goal/toggle block')
 
-    # show values table
+cols = []
+for r in range(n):
+    row_cols = st.columns(n, gap='small')
+    for c, col in enumerate(row_cols):
+        key = f'cell_{r}_{c}_{n}'
+        label = cell_label(r,c)
+        if col.button(label or ' ', key=key, help=f'Cell {r},{c}'):
+            on_cell_click(r,c)
+            st.experimental_rerun()
+
+if st.session_state.V:
     st.subheader('State Values V(s)')
     import pandas as pd
-    df = pd.DataFrame([[f"{v:.2f}" for v in row] for row in V])
+    df = pd.DataFrame([[f"{v:.2f}" for v in row] for row in st.session_state.V])
     st.table(df)
 
-    # show policy grid
-    st.subheader('Policy (arrows)')
-    html = ['<table style="border-collapse:collapse">']
-    for r in range(n):
-        html.append('<tr>')
-        for c in range(n):
-            cell_style = 'padding:10px; border:1px solid #999; text-align:center; width:48px;'
-            classes = []
-            if [r,c] == start:
-                cell_style += ' background:#b7f0b7;'
-            if [r,c] == goal:
-                cell_style += ' background:#f0b7b7;'
-            if [r,c] in blocks:
-                cell_style += ' background:#d0d0d0;'
-            arrow = arrows.get(policy[r][c], '')
-            html.append(f"<td style='{cell_style}'>{arrow}<div style='font-size:10px'>{V[r][c]:.2f}</div></td>")
-        html.append('</tr>')
-    html.append('</table>')
-    st.markdown(''.join(html), unsafe_allow_html=True)
-
-    # show path
     st.subheader('Planned Path')
-    st.write(path)
+    st.write(st.session_state.path)
 
     st.success('Value iteration completed')
-
 else:
-    st.info('Configure parameters in the sidebar and click "Run Value Iteration"')
+    st.info('No computed policy yet. Click "Run Value Iteration".')
